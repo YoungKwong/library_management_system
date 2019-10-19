@@ -1,9 +1,7 @@
 import tkinter as tk
 from pymysql import *
+import pickle
 from tkinter import messagebox
-
-def usr():
-    pass
 
 
 def editbook():
