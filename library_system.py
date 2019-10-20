@@ -12,6 +12,7 @@ power = False
 # 判断管理员是否登录
 def log(func):
     global power
+
     def wrapper(*args, **kw):
         if power is False:
             tk.messagebox.showerror(title='Error', message='你还未登录,没有管理员权限')
@@ -54,6 +55,7 @@ def usr():
 
     @log
     def usr_sign_up():
+
         def sign_to_Mofan_Python():  # 注册功能
             np = new_pwd.get()  # get()到在Toplevel窗口中Entry里输入的值
             npf = new_pwd_confirm.get()
@@ -103,8 +105,8 @@ def usr():
     userwindow.resizable(0, 0)
 
     tk.Label(userwindow, text='请管理员登录\n吉林大学珠海学院\n图书馆分馆', font=('Arial', 20)).place(x=110, y=40)
-    tk.Label(userwindow, text='用户名:').place(x=50, y=150)
-    tk.Label(userwindow, text='密码:').place(x=50, y=190)
+    tk.Label(userwindow, text='用户名:').place(x=100, y=150)
+    tk.Label(userwindow, text='密码:').place(x=100, y=190)
 
     var_usr_name = tk.StringVar()
     # var_usr_name.set('exampel@python.com')  # 给username的Entry一个初始值
@@ -116,9 +118,9 @@ def usr():
     entry_usr_pwd.place(x=160, y=190)
 
     btn_login = tk.Button(userwindow, text='登录', command=usr_login)
-    btn_login.place(x=150, y=230)
+    btn_login.place(x=160, y=230)
     btn_sign_up = tk.Button(userwindow, text='注册', command=usr_sign_up)
-    btn_sign_up.place(x=250, y=230)
+    btn_sign_up.place(x=260, y=230)
 
 
 # 查找图书
@@ -126,13 +128,13 @@ def search_button():
     try:
         global listbook
         dellist(tree)
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='pythonsql')
-        cursor = conn.cursor()
         val = searchEntry.get()
-        cursor.execute('select * from library where bookname like %s;' % val)
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+        cursor = conn.cursor()
+        cursor.execute("select * from library where bookname like '%%%s%%';" % val)
         result = cursor.fetchall()
         for i in range(len(result)):
-            listbook = result[i]
+            listbook = result[i][1:]
             tree.insert('', 'end', value=listbook)
     except Exception as e:
         pass
@@ -143,23 +145,29 @@ def search_button():
 
 # 显示所有图书
 def allbook_button():
-    global listbook
-    dellist(tree)
-    conn = connect(host='localhost', port=3306, user='root', password='password', database='pythonsql')
-    cursor = conn.cursor()
-    cursor.execute('select * from library')
-    result = cursor.fetchall()
-    for i in range(len(result)):
-        listbook = result[i]
-        tree.insert('', 'end', value=listbook)
-    cursor.close()
-    conn.close()
+    try:
+        global listbook
+        dellist(tree)
+        val = searchEntry.get()
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+        cursor = conn.cursor()
+        cursor.execute("select * from library where book_id like '%s%%';" % val)
+        result = cursor.fetchall()
+        for i in range(len(result)):
+            listbook = result[i][1:]
+            tree.insert('', 'end', value=listbook)
+    except Exception as e:
+        pass
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def lendbook_button():
     pass
 
 
+@log
 def returnbook_button():
     pass
 
@@ -171,9 +179,9 @@ def removebook_button():
     for i in range(len(val_lb)):
         val_bn = val_lb[i][0]
         val_an = val_lb[i][1]
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='pythonsql')
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
         cursor = conn.cursor()
-        cursor.execute('delete from library where bookname="%s" and place="%s";' % (val_bn, val_an))
+        cursor.execute('delete from library where book_id="%s" and bookname="%s";' % (val_bn, val_an))
         conn.commit()
         cursor.close()
         conn.close()
@@ -187,12 +195,18 @@ def editbook_button():
     editbook()
 
 
+# 编辑读者
+@log
+def editreader_button():
+    editreader()
+
+
 # 点击treeview事件
 @log
 def treeviewClick(event):
     for item in tree.selection():
         item_text = tree.item(item, 'values')
-        lb.insert('end', (item_text[1], item_text[3], item_text[4]))
+        lb.insert('end', '%s  《%s》  %s' % (item_text[0], item_text[1], item_text[2]))
 
 
 def dellb():
@@ -209,6 +223,14 @@ def dellist(tree):
 def loginuser():
     usr()
 
+
+@log
+def overuser():
+    global power
+    power = False
+    var1.set('管理员未登录')
+
+
 window1 = tk.Tk()
 window1.title('图书管理系统')
 window1.geometry('900x627')
@@ -219,11 +241,11 @@ menubar = tk.Menu(window1)
 filemenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='管理员', menu=filemenu)
 filemenu.add_command(label='登录', command=loginuser)
-filemenu.add_command(label='注销')
+filemenu.add_command(label='注销', command=overuser)
 
 editmenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='编辑', menu=editmenu)
-editmenu.add_command(label='编辑读者')
+editmenu.add_command(label='编辑读者', command=editreader_button)
 editmenu.add_command(label='编辑图书', command=editbook_button)
 
 notemenu = tk.Menu(menubar, tearoff=0)
@@ -232,19 +254,17 @@ notemenu.add_command(label='查看借还记录')
 notemenu.add_command(label='查看学生信息')
 
 
-tree = ttk.Treeview(window1, columns=['0', '1', '2', '3', '4', '5', '6'], show='headings', height=30)
-tree.column('0', width=50, anchor='center')
-tree.column('1', width=150, anchor='center')
-tree.column('2', width=100, anchor='center')
-tree.column('3', width=150, anchor='center')
-tree.column('4', width=100, anchor='center')
+tree = ttk.Treeview(window1, columns=['1', '2', '3', '4', '5', '6'], show='headings', height=30)
+tree.column('1', width=125, anchor='center')
+tree.column('2', width=175, anchor='center')
+tree.column('3', width=100, anchor='center')
+tree.column('4', width=150, anchor='center')
 tree.column('5', width=75, anchor='center')
 tree.column('6', width=75, anchor='center')
-tree.heading('0', text='ID')
-tree.heading('1', text='书籍名')
-tree.heading('2', text='作者')
-tree.heading('3', text='出版社')
-tree.heading('4', text='编号')
+tree.heading('1', text='编号')
+tree.heading('2', text='书籍名')
+tree.heading('3', text='作者')
+tree.heading('4', text='出版社')
 tree.heading('5', text='馆藏复本')
 tree.heading('6', text='可借复本')
 
@@ -260,7 +280,7 @@ searchEntry = tk.Entry(window1)
 searchButton = tk.Button(window1, text='搜索图书',
                          width=6, height=1, command=search_button)
 
-allbookButton = tk.Button(window1, text='所有图书',
+allbookButton = tk.Button(window1, text='搜索分类',
                          width=6, height=1, command=allbook_button)
 
 lendbookButton = tk.Button(window1, text='借出图书',
@@ -277,15 +297,23 @@ clearbookButton = tk.Button(window1, text='清空列表',
 
 lb = tk.Listbox(window1, listvariable=var2, width=28)
 
+
+tk.Label(window1, text='A 马列主义、毛泽东思想、邓小平理论\nB 哲学、宗教；C 社会科学总论\n'
+                       'D 政治、法律；E 军事；F 经济\nG 文化、科学、教育、体育\nH 语言、文字；'
+                       'I 文学；J 艺术；K 地理\nN 自然科学总论；O 数理科学与化学\nP 天文学、地球科学'
+                       '；Q 生物科学\nR 医药、卫生；农业科学；T 工业技术\nU 交通运输；V 航空、航天\nX 环境科学,安全科学；Z 综合性图书',
+         font=('微软雅黑', 8)).place(x=0, y=440, anchor='nw')
+
+
 userLabel.place(x=22, y=0, anchor='nw')
-searchEntry.place(x=0, y=125, anchor='nw')
-searchButton.place(x=145, y=120, anchor='nw')
-allbookButton.place(x=145, y=150, anchor='nw')
-lendbookButton.place(x=40, y=230, anchor='nw')
-returnbookButton.place(x=110, y=230, anchor='nw')
-lb.place(x=0, y=260, anchor='nw')
-removebookButton.place(x=40, y=460, anchor='nw')
-clearbookButton.place(x=110, y=460, anchor='nw')
+searchEntry.place(x=0, y=85, anchor='nw')
+searchButton.place(x=145, y=80, anchor='nw')
+allbookButton.place(x=145, y=110, anchor='nw')
+lendbookButton.place(x=40, y=170, anchor='nw')
+returnbookButton.place(x=110, y=170, anchor='nw')
+lb.place(x=0, y=200, anchor='nw')
+removebookButton.place(x=40, y=390, anchor='nw')
+clearbookButton.place(x=110, y=390, anchor='nw')
 
 tree.place(x=200, y=0, anchor='nw')
 
