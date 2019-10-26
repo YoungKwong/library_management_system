@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from pymysql import *
 from windowui import *
+import pickle
 from tkinter import messagebox
 
 
@@ -47,7 +48,7 @@ def usr():
                 tk.messagebox.showerror(message='密码错误，请重新输入密码。')
         else:  # 如果在资料夹usrs_info字典里没有对应的usr_name
             is_sign_up = tk.messagebox.askyesno(title='Welcome',  # 用弹出窗口问你是否注册
-                                                message=('用户不存在，是否注册'))
+                                                message='用户不存在，是否注册')
             if is_sign_up is True:
                 usr_sign_up()
             else:
@@ -129,9 +130,9 @@ def search_button():
         global listbook
         dellist(tree)
         val = searchEntry.get()
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
         cursor = conn.cursor()
-        cursor.execute("select * from library where bookname like '%%%s%%';" % val)
+        cursor.execute("select * from book where book_name like '%%%s%%';" % val)
         result = cursor.fetchall()
         for i in range(len(result)):
             listbook = result[i][1:]
@@ -143,15 +144,15 @@ def search_button():
         conn.close()
 
 
-# 显示所有图书
+# 显示分类图书
 def allbook_button():
     try:
         global listbook
         dellist(tree)
         val = searchEntry.get()
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
         cursor = conn.cursor()
-        cursor.execute("select * from library where book_id like '%s%%';" % val)
+        cursor.execute("select * from book where book_id like '%s%%';" % val)
         result = cursor.fetchall()
         for i in range(len(result)):
             listbook = result[i][1:]
@@ -163,8 +164,30 @@ def allbook_button():
         conn.close()
 
 
+@log
 def lendbook_button():
-    pass
+    try:
+        s_id = stu_idEntry.get()
+        s_name = stu_nameEntry.get()
+        val_lb = lb.get('0', 'end')
+        for i in range(len(val_lb)):
+            val_bn = val_lb[i][0]
+            val_an = val_lb[i][1]
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+            cursor = conn.cursor()
+            cursor.execute('begin;'
+                           'insert into borrow (stu_id, stu_name, book_id, book_name, borrow_date, return_date) values ("%s", "%s", "%s", "%s", now(), date_add(now(), interval 1 month));'
+                           'update students set return_book=return_book+1 where stu_id="%s and return_book>0";'
+                           'update book set lendbook=lendbook-1 where book_id="%s" and lendbook>0;'
+                           'commit;' % (s_id, s_name, val_bn, val_an, s_id, val_bn))
+            conn.commit()
+            lb.delete('0', 'end')
+            tk.messagebox.showinfo(title='Hi', message='图书已借出！')
+    except Exception as e:
+        pass
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @log
@@ -175,11 +198,13 @@ def returnbook_button():
 # 删除图书
 @log
 def removebook_button():
+    pass
+    '''
     val_lb = lb.get('0', 'end')
     for i in range(len(val_lb)):
         val_bn = val_lb[i][0]
         val_an = val_lb[i][1]
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
         cursor = conn.cursor()
         cursor.execute('delete from library where book_id="%s" and bookname="%s";' % (val_bn, val_an))
         conn.commit()
@@ -187,7 +212,7 @@ def removebook_button():
         conn.close()
         lb.delete('0', 'end')
         tk.messagebox.showinfo(title='Hi', message='图书删除成功！')
-        
+    '''
 
 # 编辑图书
 @log
@@ -211,6 +236,7 @@ def treeviewClick(event):
 
 def dellb():
     lb.delete('0', 'end')
+
 
 # 清除treeview
 def dellist(tree):
@@ -250,7 +276,7 @@ editmenu.add_command(label='编辑图书', command=editbook_button)
 
 notemenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='日志', menu=notemenu)
-notemenu.add_command(label='查看借还记录')
+notemenu.add_command(label='查看已借图书')
 notemenu.add_command(label='查看学生信息')
 
 
@@ -283,6 +309,9 @@ searchButton = tk.Button(window1, text='搜索图书',
 allbookButton = tk.Button(window1, text='搜索分类',
                          width=6, height=1, command=allbook_button)
 
+stu_idEntry = tk.Entry(window1, width=12)
+stu_nameEntry = tk.Entry(window1, width=12)
+
 lendbookButton = tk.Button(window1, text='借出图书',
                          width=6, height=1, command=lendbook_button)
 
@@ -302,18 +331,22 @@ tk.Label(window1, text='A 马列主义、毛泽东思想、邓小平理论\nB �
                        'D 政治、法律；E 军事；F 经济\nG 文化、科学、教育、体育\nH 语言、文字；'
                        'I 文学；J 艺术；K 地理\nN 自然科学总论；O 数理科学与化学\nP 天文学、地球科学'
                        '；Q 生物科学\nR 医药、卫生；农业科学；T 工业技术\nU 交通运输；V 航空、航天\nX 环境科学,安全科学；Z 综合性图书',
-         font=('微软雅黑', 8)).place(x=0, y=440, anchor='nw')
+         font=('微软雅黑', 8)).place(x=0, y=460, anchor='nw')
 
 
 userLabel.place(x=22, y=0, anchor='nw')
-searchEntry.place(x=0, y=85, anchor='nw')
-searchButton.place(x=145, y=80, anchor='nw')
-allbookButton.place(x=145, y=110, anchor='nw')
-lendbookButton.place(x=40, y=170, anchor='nw')
-returnbookButton.place(x=110, y=170, anchor='nw')
-lb.place(x=0, y=200, anchor='nw')
-removebookButton.place(x=40, y=390, anchor='nw')
-clearbookButton.place(x=110, y=390, anchor='nw')
+searchEntry.place(x=0, y=65, anchor='nw')
+searchButton.place(x=145, y=60, anchor='nw')
+allbookButton.place(x=145, y=90, anchor='nw')
+tk.Label(window1, text='学生学号').place(x=0, y=175, anchor='nw')
+tk.Label(window1, text='学生姓名').place(x=0, y=205, anchor='nw')
+stu_idEntry.place(x=55, y=175, anchor='nw')
+stu_nameEntry.place(x=55, y=205, anchor='nw')
+lendbookButton.place(x=145, y=170, anchor='nw')
+returnbookButton.place(x=145, y=200, anchor='nw')
+lb.place(x=0, y=230, anchor='nw')
+removebookButton.place(x=40, y=420, anchor='nw')
+clearbookButton.place(x=110, y=420, anchor='nw')
 
 tree.place(x=200, y=0, anchor='nw')
 

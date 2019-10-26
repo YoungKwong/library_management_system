@@ -1,6 +1,5 @@
 import tkinter as tk
 from pymysql import *
-import pickle
 from tkinter import messagebox
 
 
@@ -13,11 +12,11 @@ def editreader():
             ea = entry_author.get()
             ec = entry_company.get()
             ep = entry_place.get()
-            conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql',
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library',
                            charset='utf8mb4')
             cursor = conn.cursor()
             cursor.execute(
-                'insert into readers (student_id, name, department, class) values ("%s", "%s", "%s", "%s");'
+                'insert into students (stu_id, stu_name, stu_college, stu_class) values ("%s", "%s", "%s", "%s");'
                 % (eb, ea, ec, ep))
             conn.commit()
             tk.messagebox.showinfo(title='Hi', message='读者添加成功！')
@@ -37,10 +36,10 @@ def editreader():
             ea = entry_author.get()
             ec = entry_company.get()
             ep = entry_place.get()
-            conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
             cursor = conn.cursor()
             cursor.execute(
-                'update readers set student_id="%s", name="%s", department="%s", class="%s" where place="%s";'
+                'update students set stu_id="%s", stu_name="%s", stu_college="%s", stu_class="%s" where place="%s";'
                 % (eb, ea, ec, ep, eb))
             conn.commit()
             tk.messagebox.showinfo(title='Hi', message='读者修改成功！')
@@ -97,10 +96,10 @@ def editbook():
             ep = entry_place.get()
             es = entry_sumbook.get()
             el = entry_lendbook.get()
-            conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
             cursor = conn.cursor()
             cursor.execute(
-                'insert into library (bookname, author, company, book_id, sumbook, lendbook) values ("%s", "%s", "%s", "%s", "%s", "%s");'
+                'insert into book (book_name, book_author, book_comp, book_id, sumbook, lendbook) values ("%s", "%s", "%s", "%s", "%s", "%s");'
                 % (eb, ea, ec, ep, es, el))
             conn.commit()
             tk.messagebox.showinfo(title='Hi', message='图书添加成功！')
@@ -125,10 +124,10 @@ def editbook():
             ep = entry_place.get()
             es = entry_sumbook.get()
             el = entry_lendbook.get()
-            conn = connect(host='localhost', port=3306, user='root', password='password', database='mypysql')
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
             cursor = conn.cursor()
             cursor.execute(
-                'update library set bookname="%s", author="%s", company="%s", book_id="%s", sumbook="%s", lendbook="%s" where book_id="%s";'
+                'insert into book (book_name, book_author, book_comp, book_id, sumbook, lendbook) values ("%s", "%s", "%s", "%s", "%s", "%s");'
                 % (eb, ea, ec, ep, es, el, es))
             conn.commit()
             tk.messagebox.showinfo(title='Hi', message='图书修改成功！')
