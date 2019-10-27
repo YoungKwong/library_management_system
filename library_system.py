@@ -168,7 +168,7 @@ def allbook_button():
 def lendbook_button():
     try:
         sql1 = 'begin;'
-        sql2 = 'insert into borrow (s_id, s_name, b_id, b_name, borrow_date, return_date) values ("%s", "%s", "%s", "%s", now(), date_add(now(), interval 1 month));'
+        sql2 = 'insert into borrow (s_id, s_name, b_id, b_name, borrow_date, return_date) values ("%s", "%s", "%s", "%s", curdate(), date_add(curdate(), interval 1 month));'
         sql3 = 'update students set returnbook = returnbook + 1 where stu_id = "%s" and returnbook < 10;'
         sql4 = 'update book set lendbook = lendbook - 1 where book_id = "%s" and lendbook > 0;'
         sql5 = 'commit;'
@@ -264,15 +264,56 @@ def dellb():
 
 
 # 清除treeview
-def dellist(tree):
-    x = tree.get_children()
+def dellist(y):
+    x = y.get_children()
     for item in x:
-        tree.delete(item)
+        y.delete(item)
 
 
 # 用户登录
 def loginuser():
     usr()
+
+
+# 查看学生信息
+def viewstudent():
+    try:
+        global listbook
+        stuwindow = tk.Toplevel()
+        stuwindow.title('学生借书信息')
+        stuwindow.geometry('600x300+450+300')
+        stuwindow.resizable(0, 0)
+        tree_stu = ttk.Treeview(stuwindow, columns=['1', '2', '3', '4', '5', '6'], show='headings', height=14)
+        tree_stu.column('1', width=100, anchor='center')
+        tree_stu.column('2', width=100, anchor='center')
+        tree_stu.column('3', width=100, anchor='center')
+        tree_stu.column('4', width=100, anchor='center')
+        tree_stu.column('5', width=100, anchor='center')
+        tree_stu.column('6', width=100, anchor='center')
+        tree_stu.heading('1', text='学生学号')
+        tree_stu.heading('2', text='学生姓名')
+        tree_stu.heading('3', text='书籍编号')
+        tree_stu.heading('4', text='书籍名称')
+        tree_stu.heading('5', text='借书日期')
+        tree_stu.heading('6', text='还书期限')
+
+        tree_stu.place(x=0, y=0, anchor='nw')
+
+        dellist(tree_stu)
+        s_id = stu_idEntry.get()
+        s_name = stu_nameEntry.get()
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+        cursor = conn.cursor()
+        cursor.execute('select * from borrow where s_id = "%s" and s_name = "%s";' % (s_id, s_name))
+        result = cursor.fetchall()
+        for i in range(len(result)):
+            listbook = result[i][1:]
+            tree_stu.insert('', 'end', value=listbook)
+    except Exception as e:
+        pass
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @log
@@ -302,7 +343,7 @@ editmenu.add_command(label='编辑图书', command=editbook_button)
 notemenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='日志', menu=notemenu)
 notemenu.add_command(label='查看已借图书')
-notemenu.add_command(label='查看学生信息')
+notemenu.add_command(label='查看学生信息', command=viewstudent)
 
 
 tree = ttk.Treeview(window1, columns=['1', '2', '3', '4', '5', '6'], show='headings', height=30)
@@ -349,6 +390,9 @@ removebookButton = tk.Button(window1, text='删除图书',
 clearbookButton = tk.Button(window1, text='清空列表',
                          width=6, height=1, command=dellb)
 
+viewstudentButton = tk.Button(window1, text='借书信息',
+                         width=6, height=1, command=viewstudent)
+
 lb = tk.Listbox(window1, listvariable=var2, width=28)
 
 
@@ -363,11 +407,12 @@ userLabel.place(x=22, y=0, anchor='nw')
 searchEntry.place(x=0, y=65, anchor='nw')
 searchButton.place(x=145, y=60, anchor='nw')
 allbookButton.place(x=145, y=90, anchor='nw')
-tk.Label(window1, text='学生学号').place(x=0, y=175, anchor='nw')
-tk.Label(window1, text='学生姓名').place(x=0, y=205, anchor='nw')
-stu_idEntry.place(x=55, y=175, anchor='nw')
-stu_nameEntry.place(x=55, y=205, anchor='nw')
-lendbookButton.place(x=145, y=170, anchor='nw')
+tk.Label(window1, text='学生学号').place(x=0, y=160, anchor='nw')
+tk.Label(window1, text='学生姓名').place(x=0, y=195, anchor='nw')
+stu_idEntry.place(x=55, y=160, anchor='nw')
+stu_nameEntry.place(x=55, y=195, anchor='nw')
+lendbookButton.place(x=145, y=145, anchor='nw')
+viewstudentButton.place(x=145, y=175, anchor='nw')
 returnbookButton.place(x=145, y=200, anchor='nw')
 lb.place(x=0, y=230, anchor='nw')
 removebookButton.place(x=40, y=420, anchor='nw')
