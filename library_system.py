@@ -167,27 +167,50 @@ def allbook_button():
 @log
 def lendbook_button():
     try:
+        sql1 = 'begin;'
+        sql2 = 'insert into borrow (s_id, s_name, b_id, b_name, borrow_date, return_date) values ("%s", "%s", "%s", "%s", now(), date_add(now(), interval 1 month));'
+        sql3 = 'update students set returnbook = returnbook + 1 where stu_id = "%s" and returnbook < 10;'
+        sql4 = 'update book set lendbook = lendbook - 1 where book_id = "%s" and lendbook > 0;'
+        sql5 = 'commit;'
         s_id = stu_idEntry.get()
         s_name = stu_nameEntry.get()
         val_lb = lb.get('0', 'end')
         for i in range(len(val_lb)):
-            val_bn = val_lb[i][0]
-            val_an = val_lb[i][1]
+            b_id = val_lb[i][0]
+            b_name = val_lb[i][1]
             conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
             cursor = conn.cursor()
-            cursor.execute('begin;'
-                           'insert into borrow (stu_id, stu_name, book_id, book_name, borrow_date, return_date) values ("%s", "%s", "%s", "%s", now(), date_add(now(), interval 1 month));'
-                           'update students set return_book=return_book+1 where stu_id="%s and return_book>0";'
-                           'update book set lendbook=lendbook-1 where book_id="%s" and lendbook>0;'
-                           'commit;' % (s_id, s_name, val_bn, val_an, s_id, val_bn))
-            conn.commit()
-            lb.delete('0', 'end')
-            tk.messagebox.showinfo(title='Hi', message='图书已借出！')
-    except Exception as e:
-        pass
+            cursor.execute('select returnbook from students where stu_id="%s";' % s_id)
+            result_rb = cursor.fetchall()
+            cursor.execute('select lendbook from book where book_id="%s";' % b_id)
+            result_lb = cursor.fetchall()
+            if int(result_rb[0][0]) > 9:
+                tk.messagebox.showwarning(title='Hi', message=('该学生<%s>借书已达到上限！' % s_name))
+            elif int(result_lb[0][0]) < 1:
+                tk.messagebox.showwarning(title='Hi', message=('该图书《%s》已借完！' % b_name))
+            else:
+                cursor.execute(sql1)
+                cursor.execute(sql2 % (s_id, s_name, b_id, b_name))
+                cursor.execute(sql3 % s_id)
+                cursor.execute(sql4 % b_id)
+                cursor.execute(sql5)
+                conn.commit()
+                lb.delete('0', 'end')
+                tk.messagebox.showinfo(title='Hi', message=('图书《%s》已成功借给学生<%s>！' % (b_name, s_name)))
+    except IntegrityError as e:
+        sign_up_stu = tk.messagebox.askyesno(title='Hi', message='该学生还未录取系统，是否添加')
+        if sign_up_stu is True:
+            editreader()
+        else:
+            pass
+    except IndexError as e:
+        sign_up_stu = tk.messagebox.askyesno(title='Hi', message='该学生还未录取系统，是否添加')
+        if sign_up_stu is True:
+            editreader()
+        else:
+            pass
     finally:
-        cursor.close()
-        conn.close()
+        pass
 
 
 @log
@@ -198,21 +221,23 @@ def returnbook_button():
 # 删除图书
 @log
 def removebook_button():
-    pass
-    '''
-    val_lb = lb.get('0', 'end')
-    for i in range(len(val_lb)):
-        val_bn = val_lb[i][0]
-        val_an = val_lb[i][1]
-        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
-        cursor = conn.cursor()
-        cursor.execute('delete from library where book_id="%s" and bookname="%s";' % (val_bn, val_an))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        lb.delete('0', 'end')
+    sign_up_stu = tk.messagebox.askyesno(title='Hi', message='是否删除图书？')
+    if sign_up_stu is True:
+        val_lb = lb.get('0', 'end')
+        for i in range(len(val_lb)):
+            b_id = val_lb[i][0]
+            b_name = val_lb[i][1]
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+            cursor = conn.cursor()
+            cursor.execute('delete from library where book_id="%s" and book_name="%s";' % (b_id, b_name))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            lb.delete('0', 'end')
         tk.messagebox.showinfo(title='Hi', message='图书删除成功！')
-    '''
+    else:
+        pass
+
 
 # 编辑图书
 @log
@@ -231,7 +256,7 @@ def editreader_button():
 def treeviewClick(event):
     for item in tree.selection():
         item_text = tree.item(item, 'values')
-        lb.insert('end', '%s  《%s》  %s' % (item_text[0], item_text[1], item_text[2]))
+        lb.insert('end', (item_text[0], item_text[1], item_text[2]))
 
 
 def dellb():
