@@ -3,6 +3,7 @@ from tkinter import ttk
 from pymysql import *
 from windowui import *
 import pickle
+import xlrd
 from tkinter import messagebox
 
 
@@ -72,7 +73,7 @@ def usr():
                     exist_usr_info[nn] = np  # 把nn和np存到字典exist_usr_info中
                     with open('usrs_info.pickle', 'wb') as usr_file:  # 把字典exist_usr_info里的键值对写入usrs_info.pickle
                         pickle.dump(exist_usr_info, usr_file)
-                    tk.messagebox.showinfo('Welcome', '注册成功!')  # 提示注册成功
+                    tk.messagebox.showinfo('Welcome', '添加管理员成功!')  # 提示注册成功
                     window_sign_up.destroy()  # .destroy()：摧毁(关闭)注册窗口
 
         window_sign_up = tk.Toplevel(userwindow)  # .Toplevel()：窗口上的窗口，不需要再window.mainloop()
@@ -96,7 +97,7 @@ def usr():
         entry_new_pwd_confirm.place(x=150, y=90)
 
         btn_confirm_sign_up = tk.Button(window_sign_up,
-                                        text='注册',
+                                        text='添加管理员',
                                         command=sign_to_Mofan_Python)
         btn_confirm_sign_up.place(x=150, y=130)
 
@@ -118,10 +119,10 @@ def usr():
     entry_usr_pwd = tk.Entry(userwindow, textvariable=var_usr_pwd, show='*')
     entry_usr_pwd.place(x=160, y=190)
 
-    btn_login = tk.Button(userwindow, text='登录', command=usr_login)
-    btn_login.place(x=160, y=230)
-    btn_sign_up = tk.Button(userwindow, text='注册', command=usr_sign_up)
-    btn_sign_up.place(x=260, y=230)
+    btn_login = tk.Button(userwindow, text='管理员登录', command=usr_login)
+    btn_login.place(x=140, y=230)
+    btn_sign_up = tk.Button(userwindow, text='添加管理员', command=usr_sign_up)
+    btn_sign_up.place(x=240, y=230)
 
 
 # 查找图书
@@ -134,14 +135,18 @@ def search_button():
         cursor = conn.cursor()
         cursor.execute("select * from book where book_name like '%%%s%%';" % val)
         result = cursor.fetchall()
-        for i in range(len(result)):
-            listbook = result[i][1:]
-            tree.insert('', 'end', value=listbook)
+        if len(result) == 0:
+            tk.messagebox.showinfo(title='Hi', message='图书馆暂无此书')
+        else:
+            for i in range(len(result)):
+                listbook = result[i][1:]
+                tree.insert('', 'end', value=listbook)
+        cursor.close()
+        conn.close()
     except Exception as e:
         pass
     finally:
-        cursor.close()
-        conn.close()
+        pass
 
 
 # 显示分类图书
@@ -164,6 +169,7 @@ def allbook_button():
         conn.close()
 
 
+# 借出图书
 @log
 def lendbook_button():
     try:
@@ -197,6 +203,8 @@ def lendbook_button():
                 conn.commit()
                 lb.delete('0', 'end')
                 tk.messagebox.showinfo(title='Hi', message=('图书《%s》已成功借给学生<%s>！' % (b_name, s_name)))
+            cursor.close()
+            conn.close()
     except IntegrityError as e:
         sign_up_stu = tk.messagebox.askyesno(title='Hi', message='该学生还未录取系统，是否添加')
         if sign_up_stu is True:
@@ -213,9 +221,43 @@ def lendbook_button():
         pass
 
 
+# 归还图书(需改进)
 @log
 def returnbook_button():
-    pass
+    try:
+        sql1 = 'begin;'
+        sql2 = 'delete from borrow where s_id = "%s" and b_id = "%s";'
+        sql3 = 'update students set returnbook = returnbook - 1 where stu_id = "%s";'
+        sql4 = 'update book set lendbook = lendbook + 1 where book_id = "%s";'
+        sql5 = 'commit;'
+        s_id = stu_idEntry.get()
+        s_name = stu_nameEntry.get()
+        val_lb = lb.get('0', 'end')
+        for i in range(len(val_lb)):
+            b_id = val_lb[i][0]
+            b_name = val_lb[i][1]
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+            cursor = conn.cursor()
+            cursor.execute('select returnbook from students where stu_id="%s";' % s_id)
+            result_rb = cursor.fetchall()
+            cursor.execute('select lendbook from book where book_id="%s";' % b_id)
+            result_lb = cursor.fetchall()
+            cursor.execute(sql1)
+            cursor.execute(sql2 % (s_id, b_id))
+            cursor.execute(sql3 % s_id)
+            cursor.execute(sql4 % b_id)
+            cursor.execute(sql5)
+            conn.commit()
+            lb.delete('0', 'end')
+        cursor.close()
+        conn.close()
+        tk.messagebox.showinfo(title='Hi', message='图书已归还')
+    except IntegrityError as e:
+        pass
+    except IndexError as e:
+        pass
+    finally:
+        pass
 
 
 # 删除图书
@@ -229,7 +271,7 @@ def removebook_button():
             b_name = val_lb[i][1]
             conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
             cursor = conn.cursor()
-            cursor.execute('delete from library where book_id="%s" and book_name="%s";' % (b_id, b_name))
+            cursor.execute('delete from book where book_id="%s" and book_name="%s" where (lendbook = sumbook - 1);' % (b_id, b_name))
             conn.commit()
             cursor.close()
             conn.close()
@@ -239,6 +281,32 @@ def removebook_button():
         pass
 
 
+# 导入图书
+def importbook_button():
+    data = xlrd.open_workbook('book.xlsx')
+    table = data.sheets()[0]
+    nrows = table.nrows
+    for i in range(nrows-1):
+        li_book = table.row_values(i+1)
+        try:
+            eb = li_book[1]
+            ea = li_book[2]
+            ec = li_book[3]
+            ep = li_book[4]
+            es = li_book[5]
+            el = li_book[6]
+            conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+            cursor = conn.cursor()
+            cursor.execute(
+                'insert into book (book_name, book_author, book_comp, book_id, sumbook, lendbook) values ("%s", "%s", "%s", "%s", "%s", "%s");'
+                % (eb, ea, ec, ep, es, el))
+            conn.commit()
+            tk.messagebox.showinfo(title='Hi', message='图书导入成功！')
+        except Exception as e:
+            pass
+        finally:
+            cursor.close()
+            conn.close()
 # 编辑图书
 @log
 def editbook_button():
@@ -309,11 +377,12 @@ def viewstudent():
         for i in range(len(result)):
             listbook = result[i][1:]
             tree_stu.insert('', 'end', value=listbook)
+        cursor.close()
+        conn.close()
     except Exception as e:
         pass
     finally:
-        cursor.close()
-        conn.close()
+        pass
 
 
 @log
@@ -337,7 +406,7 @@ filemenu.add_command(label='注销', command=overuser)
 
 editmenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='编辑', menu=editmenu)
-editmenu.add_command(label='编辑读者', command=editreader_button)
+# editmenu.add_command(label='编辑读者', command=editreader_button)
 editmenu.add_command(label='编辑图书', command=editbook_button)
 
 notemenu = tk.Menu(menubar, tearoff=0)
@@ -387,6 +456,9 @@ returnbookButton = tk.Button(window1, text='归还图书',
 removebookButton = tk.Button(window1, text='删除图书',
                          width=6, height=1, command=removebook_button)
 
+importbookButton = tk.Button(window1, text='导入图书',
+                         width=6, height=1, command=importbook_button)
+
 clearbookButton = tk.Button(window1, text='清空列表',
                          width=6, height=1, command=dellb)
 
@@ -415,7 +487,8 @@ lendbookButton.place(x=145, y=145, anchor='nw')
 viewstudentButton.place(x=145, y=175, anchor='nw')
 returnbookButton.place(x=145, y=200, anchor='nw')
 lb.place(x=0, y=230, anchor='nw')
-removebookButton.place(x=40, y=420, anchor='nw')
+# removebookButton.place(x=40, y=420, anchor='nw')
+importbookButton.place(x=40, y=420, anchor='nw')
 clearbookButton.place(x=110, y=420, anchor='nw')
 
 tree.place(x=200, y=0, anchor='nw')
