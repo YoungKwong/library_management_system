@@ -5,6 +5,7 @@ from windowui import *
 import pickle
 import xlrd
 from tkinter import messagebox
+import time
 
 
 listbook = []
@@ -162,11 +163,12 @@ def allbook_button():
         for i in range(len(result)):
             listbook = result[i][1:]
             tree.insert('', 'end', value=listbook)
+        cursor.close()
+        conn.close()
     except Exception as e:
         pass
     finally:
-        cursor.close()
-        conn.close()
+        pass
 
 
 # 借出图书
@@ -205,6 +207,10 @@ def lendbook_button():
                 tk.messagebox.showinfo(title='Hi', message=('图书《%s》已成功借给学生<%s>！' % (b_name, s_name)))
             cursor.close()
             conn.close()
+
+            myFile = open('log.txt', 'w')
+            myFile.write('[%s],图书《%s》已成功借给学生<%s>！\n' % (time.asctime(), b_name, s_name))
+            myFile.close()
     except IntegrityError as e:
         sign_up_stu = tk.messagebox.askyesno(title='Hi', message='该学生还未录取系统，是否添加')
         if sign_up_stu is True:
@@ -251,6 +257,10 @@ def returnbook_button():
             lb.delete('0', 'end')
         cursor.close()
         conn.close()
+
+        myFile = open('log.txt', 'w')
+        myFile.write('[%s],学生<%s>借出的图书《%s》已成功归还！\n' % (time.asctime(), s_name, b_name))
+        myFile.close()
         tk.messagebox.showinfo(title='Hi', message='图书已归还')
     except IntegrityError as e:
         pass
@@ -385,6 +395,54 @@ def viewstudent():
         pass
 
 
+# 查看逾期未还学生
+def overtime():
+    try:
+        global listbook
+        stuwindow = tk.Toplevel()
+        stuwindow.title('学生借书信息')
+        stuwindow.geometry('600x300+450+300')
+        stuwindow.resizable(0, 0)
+        tree_stu = ttk.Treeview(stuwindow, columns=['1', '2', '3', '4', '5', '6'], show='headings', height=14)
+        tree_stu.column('1', width=100, anchor='center')
+        tree_stu.column('2', width=100, anchor='center')
+        tree_stu.column('3', width=100, anchor='center')
+        tree_stu.column('4', width=100, anchor='center')
+        tree_stu.column('5', width=100, anchor='center')
+        tree_stu.column('6', width=100, anchor='center')
+        tree_stu.heading('1', text='学生学号')
+        tree_stu.heading('2', text='学生姓名')
+        tree_stu.heading('3', text='书籍编号')
+        tree_stu.heading('4', text='书籍名称')
+        tree_stu.heading('5', text='借书日期')
+        tree_stu.heading('6', text='还书期限')
+
+        tree_stu.place(x=0, y=0, anchor='nw')
+
+        dellist(tree_stu)
+        conn = connect(host='localhost', port=3306, user='root', password='password', database='library')
+        cursor = conn.cursor()
+        cursor.execute("select * from borrow where return_date < curdate();")
+        result = cursor.fetchall()
+        for i in range(len(result)):
+            listbook = result[i][1:]
+            tree_stu.insert('', 'end', value=listbook)
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        pass
+    finally:
+        pass
+
+
+# 查看日志
+def book_log():
+    myFile = open('log.txt', 'r')
+    content = myFile.read()
+    print(content)
+    myFile.close()
+
+
 @log
 def overuser():
     global power
@@ -411,8 +469,8 @@ editmenu.add_command(label='编辑图书', command=editbook_button)
 
 notemenu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label='日志', menu=notemenu)
-notemenu.add_command(label='查看已借图书')
-notemenu.add_command(label='查看学生信息', command=viewstudent)
+notemenu.add_command(label='查看逾期名单', command=overtime)
+notemenu.add_command(label='查看日志', command=book_log)
 
 
 tree = ttk.Treeview(window1, columns=['1', '2', '3', '4', '5', '6'], show='headings', height=30)
