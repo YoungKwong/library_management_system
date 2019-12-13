@@ -208,7 +208,7 @@ def lendbook_button():
             cursor.close()
             conn.close()
 
-            myFile = open('log.txt', 'w')
+            myFile = open('log.txt', 'a')
             myFile.write('[%s],图书《%s》已成功借给学生<%s>！\n' % (time.asctime(), b_name, s_name))
             myFile.close()
     except IntegrityError as e:
@@ -224,7 +224,7 @@ def lendbook_button():
         else:
             pass
     finally:
-        pass
+        search_button()
 
 
 # 归还图书(需改进)
@@ -258,7 +258,7 @@ def returnbook_button():
         cursor.close()
         conn.close()
 
-        myFile = open('log.txt', 'w')
+        myFile = open('log.txt', 'a')
         myFile.write('[%s],学生<%s>借出的图书《%s》已成功归还！\n' % (time.asctime(), s_name, b_name))
         myFile.close()
         tk.messagebox.showinfo(title='Hi', message='图书已归还')
@@ -267,7 +267,7 @@ def returnbook_button():
     except IndexError as e:
         pass
     finally:
-        pass
+        search_button()
 
 
 # 删除图书
@@ -312,6 +312,7 @@ def importbook_button():
                 % (eb, ea, ec, ep, es, el))
             conn.commit()
             tk.messagebox.showinfo(title='Hi', message='图书导入成功！')
+            search_button()
         except Exception as e:
             pass
         finally:
